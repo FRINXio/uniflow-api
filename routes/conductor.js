@@ -10,10 +10,14 @@ const Router = require("express");
 const http = require("./HttpServerSide");
 
 const router = new Router();
-const baseURL = config.conductorHost;
-const baseURLWorkflow = baseURL + "workflow/";
-const baseURLMeta = baseURL + "metadata/";
-const baseURLTask = baseURL + "tasks/";
+const baseConductorURL = config.conductorHost;
+const baseSchellarURL = config.schellarHost;
+
+const baseApiURL = baseConductorURL + '/api/';
+const baseURLWorkflow = baseApiURL + "workflow/";
+const baseURLMeta = baseApiURL + "metadata/";
+const baseURLTask = baseApiURL + "tasks/";
+const baseURLSchedule = baseSchellarURL + '/schedule';
 
 router.get("/metadata/taskdefs", async (req, res, next) => {
   try {
@@ -107,11 +111,11 @@ router.put("/metadata", async (req, res, next) => {
 
 router.post("/event", async (req, res, next) => {
   try {
-    const result = await http.post(baseURL + "event/", req.body);
+    const result = await http.post(baseApiURL + "event/", req.body);
     res.status(200).send(result);
   } catch (err) {
     try {
-      const result = await http.put(baseURL + "event/", req.body);
+      const result = await http.put(baseApiURL + "event/", req.body);
       res.status(200).send(result);
     } catch (e) {
       next(e);
@@ -121,7 +125,7 @@ router.post("/event", async (req, res, next) => {
 
 router.get("/event", async (req, res, next) => {
   try {
-    const result = await http.get(baseURL + "event/");
+    const result = await http.get(baseApiURL + "event/");
     res.status(200).send(result);
   } catch (err) {
     next(err);
@@ -130,7 +134,7 @@ router.get("/event", async (req, res, next) => {
 
 router.delete("/event/:name", async (req, res, next) => {
   try {
-    const result = await http.delete(baseURL + "event/" + req.params.name);
+    const result = await http.delete(baseApiURL + "event/" + req.params.name);
     res.status(200).send(result);
   } catch (err) {
     next(err);
@@ -138,7 +142,6 @@ router.delete("/event/:name", async (req, res, next) => {
 });
 
 router.post("/workflow", async (req, res, next) => {
-  console.log(req.body)
   try {
     const result = await http.post(baseURLWorkflow, req.body);
     res.status(200).send(result);
@@ -486,6 +489,86 @@ router.get("/queue/data", async (req, res, next) => {
       pd.qsize = sizes[qname];
     });
     res.status(200).send({ polldata });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// *** Scheduling *** //
+
+const findSchedule = (schedules, name) => {
+  for (const schedule of schedules) {
+    if (schedule.name === name) {
+      return schedule;
+    }
+  }
+  return null;
+};
+
+router.get('/schedule/?', async (req, res, next) => {
+  try {
+    const result = await http.get(baseURLSchedule, req);
+    res.status(200).send(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/schedule/:name', async (req, res, next) => {
+  try {
+    const result = await http.get(baseURLSchedule + "/" + req.params.name, req);
+    res.status(200).send(result);
+  } catch (err) {
+    console.warn('Failed to GET', {error: err});
+    next(err);
+  }
+});
+
+router.put('/schedule/:name', async (req, res, next) => {
+  const urlWithName = baseURLSchedule + "/" + req.params.name;
+  try {
+    // create using POST
+    const result = await http.post(baseURLSchedule, req.body, req);
+    res.status(result.statusCode).send(result.text);
+  } catch (postError) {
+    try {
+      // update using PUT
+      const result = await http.put(urlWithName, req.body, req);
+      res.status(result.statusCode).send(result.text);
+    } catch (putError) {
+      console.warn('Failed to POST,PUT', {postError, putError});
+      next(putError);
+    }
+  }
+});
+
+router.delete('/schedule/:name', async (req, res, next) => {
+  try {
+    const result = await http.delete(
+        baseURLSchedule + "/" + req.params.name,
+        null,
+        req,
+    );
+    res.status(result.statusCode).send(result.text);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/schedule/metadata/workflow', async (req, res, next) => {
+  try {
+    const result = await http.get(baseURLMeta + 'workflow', req);
+    // combine with schedules
+    const schedules = await http.get(baseURLSchedule, req);
+    for (const workflowDef of result) {
+      const expectedScheduleName =
+          workflowDef.name + ':' + workflowDef.version;
+      const found = findSchedule(schedules, expectedScheduleName);
+      workflowDef.hasSchedule = found != null;
+      workflowDef.expectedScheduleName = expectedScheduleName;
+    }
+
+    res.status(200).send({result});
   } catch (err) {
     next(err);
   }
