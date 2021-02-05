@@ -64,8 +64,26 @@ router.delete("/metadata/taskdef/:name", async (req, res, next) => {
 
 router.get("/metadata/workflow", async (req, res, next) => {
   try {
-    const result = await http.get(baseURLMeta + "workflow", req.token);
-    res.status(200).send({ result });
+    const result = await http.get(baseURLMeta + 'workflow', req);
+    let schedules = [];
+
+    // combine with schedules
+    try {
+      schedules = await http.get(baseURLSchedule, req);
+    } catch(err) {
+      // continue if Schellar is not reachable
+      console.log(err)
+    }
+
+    for (const workflowDef of result) {
+      const expectedScheduleName =
+          workflowDef.name + ':' + workflowDef.version;
+      const found = findSchedule(schedules, expectedScheduleName);
+      workflowDef.hasSchedule = found != null;
+      workflowDef.expectedScheduleName = expectedScheduleName;
+    }
+
+    res.status(200).send({result});
   } catch (err) {
     next(err);
   }
@@ -550,25 +568,6 @@ router.delete('/schedule/:name', async (req, res, next) => {
         req,
     );
     res.status(result.statusCode).send(result.text);
-  } catch (err) {
-    next(err);
-  }
-});
-
-router.get('/schedule/metadata/workflow', async (req, res, next) => {
-  try {
-    const result = await http.get(baseURLMeta + 'workflow', req);
-    // combine with schedules
-    const schedules = await http.get(baseURLSchedule, req);
-    for (const workflowDef of result) {
-      const expectedScheduleName =
-          workflowDef.name + ':' + workflowDef.version;
-      const found = findSchedule(schedules, expectedScheduleName);
-      workflowDef.hasSchedule = found != null;
-      workflowDef.expectedScheduleName = expectedScheduleName;
-    }
-
-    res.status(200).send({result});
   } catch (err) {
     next(err);
   }
