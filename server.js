@@ -5,7 +5,7 @@ const conductorAPI = require("./routes/conductor");
 const app = express();
 
 app.use(bodyParser.urlencoded({ extended: false }));
-app.use("/conductor", bodyParser.json(), conductorAPI);
+app.use("/", bodyParser.json(), conductorAPI);
 app.use("/health", bodyParser.json(), async (req, res, next) => {
     res.status(200).send();
   }

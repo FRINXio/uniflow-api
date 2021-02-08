@@ -28,7 +28,7 @@ router.get("/metadata/taskdefs", async (req, res, next) => {
   }
 });
 
-router.post("/metadata/taskdef", async (req, res, next) => {
+router.post("/metadata/taskdefs", async (req, res, next) => {
   try {
     const result = await http.post(baseURLMeta + "taskdefs", req.body);
     res.status(200).send(result);
@@ -38,7 +38,7 @@ router.post("/metadata/taskdef", async (req, res, next) => {
   }
 });
 
-router.get("/metadata/taskdef/:name", async (req, res, next) => {
+router.get("/metadata/taskdefs/:name", async (req, res, next) => {
   try {
     const result = await http.get(
       baseURLMeta + "taskdefs/" + req.params.name,
@@ -50,7 +50,7 @@ router.get("/metadata/taskdef/:name", async (req, res, next) => {
   }
 });
 
-router.delete("/metadata/taskdef/:name", async (req, res, next) => {
+router.delete("/metadata/taskdefs/:name", async (req, res, next) => {
   try {
     const result = await http.delete(
       baseURLMeta + "taskdefs/" + req.params.name,
