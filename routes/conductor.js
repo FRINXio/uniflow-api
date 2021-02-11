@@ -150,17 +150,17 @@ router.post("/workflow", async (req, res, next) => {
   }
 });
 
-router.get("/executions", async (req, res, next) => {
+router.get(["/executions", "/workflow/search"], async (req, res, next) => {
   try {
     let freeText = [];
-    if (req.query.freeText !== "") {
+    if (req.query.freeText !== undefined && req.query.freeText !== "") {
       freeText.push(req.query.freeText);
     } else {
       freeText.push("*");
     }
 
     let h = "-1";
-    if (req.query.h !== "undefined" && req.query.h !== "") {
+    if (req.query.h !== undefined && req.query.h !== "") {
       h = req.query.h;
     }
     if (h !== "-1") {
@@ -171,11 +171,11 @@ router.get("/executions", async (req, res, next) => {
       start = req.query.start;
     }
     let size = 1000;
-    if (req.query.size !== "undefined" && req.query.size !== "") {
+    if (req.query.size !== undefined && req.query.size !== "") {
       size = req.query.size;
     }
 
-    let query = req.query.q;
+    let query = req.query.q || '';
 
     const url =
       baseURLWorkflow +
@@ -275,10 +275,25 @@ router.delete("/workflow/:workflowId", async (req, res, next) => {
   }
 });
 
+router.get("/workflow/:workflowId", async (req, res, next) => {
+  try {
+    const includeTasks = req.query.includeTasks || 'true';
+    const result = await http.get(
+      baseURLWorkflow + req.params.workflowId + `?includeTasks=${includeTasks}`,
+      req.body,
+      req.token
+    );
+    res.status(200).send(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.get("/id/:workflowId", async (req, res, next) => {
   try {
+    const includeTasks = req.query.includeTasks || 'true';
     const result = await http.get(
-      baseURLWorkflow + req.params.workflowId + "?includeTasks=true",
+      baseURLWorkflow + req.params.workflowId + `?includeTasks=${includeTasks}`,
       req.token
     );
     let meta = result.workflowDefinition;
